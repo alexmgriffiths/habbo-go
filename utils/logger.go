@@ -25,8 +25,13 @@ func (l *Logger) Info(message string) {
 	println(applyColor(white, message))
 }
 
-func (l *Logger) Error(message string) {
-	println(applyColor(red, message))
+func (l *Logger) Error(format string, args ...interface{}) {
+	if len(args) > 0 {
+		message := fmt.Sprintf(format, args...)
+		println(applyColor(red, message))
+		return
+	}
+	println(applyColor(red, format))
 }
 
 func (l *Logger) Warn(message string) {

@@ -7,7 +7,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/alexmgriffiths/habbo-go/game"
+	"github.com/alexmgriffiths/habbo-go/communication/incoming"
+	"github.com/alexmgriffiths/habbo-go/communication/incoming/handshake"
 	"github.com/alexmgriffiths/habbo-go/managers"
 	"github.com/alexmgriffiths/habbo-go/utils"
 	"github.com/gorilla/websocket"
@@ -15,18 +16,21 @@ import (
 )
 
 var databaseManager *managers.DatabaseManager = managers.NewDatabaseManager()
-var gameManager *managers.GameManager = managers.NewGameManager()
+var gameManager *managers.GameManager = managers.NewGameManager(databaseManager.GetConnection())
 var logger *utils.Logger = utils.NewLogger()
 
 type webSocketHandler struct {
 	upgrader websocket.Upgrader
 }
 
-type IncomingPacket struct {
-	header uint16
-	length int
-	buffer utils.ByteBuf
-	data   []byte
+type PacketHandler interface {
+	Handle(gm *managers.GameManager, incomingPacket *incoming.IncomingPacket, c *websocket.Conn) error
+}
+
+var packetHandlers = map[uint16]PacketHandler{
+	4000: &handshake.ClientHelloEvent{},
+	2419: &handshake.SSOTicketEvent{},
+	357:  &handshake.GetUserInfoEvent{},
 }
 
 func (wsh webSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -57,56 +61,18 @@ func (wsh webSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		header := binary.BigEndian.Uint16((message[4:6]))
 		size := len(message)
 		buffer := utils.NewByteBuf(message)
-		var packet IncomingPacket = IncomingPacket{header, size, *buffer, message}
+		packet := incoming.NewIncomingPacket(header, size, *buffer, message)
 
-		logger.Success("[INCOMING] %d", packet.header)
+		logger.Success("[INCOMING] %d", packet.GetHeader())
 
-		packet.buffer.ReadInt()   // Not sure what this one is
-		packet.buffer.ReadShort() // Header again
+		packet.GetBuffer().ReadInt()   // Not sure what this one is
+		packet.GetBuffer().ReadShort() // Header again
 
-		if packet.header == 2419 {
-
-			ticket := packet.buffer.ReadString()
-			logger.Success("TICKET: %s", ticket)
-
-			response := utils.NewByteBuf([]byte{})
-			response.WriteShort(2491)
-
-			habbo, err := game.NewHabbo(databaseManager.GetConnection(), c, ticket)
-			gameManager.AddClient(c, habbo)
-
-			var testConnection *game.Habbo = gameManager.GetClient(c)
-
-			if err != nil {
-				log.Fatal("Error", err)
-			}
-
-			log.Println(habbo)
-
-			testConnection.GetConnection().WriteMessage(websocket.BinaryMessage, response.Wrap())
-		} else if packet.header == 357 {
-
-			currentHabbo := gameManager.GetClient(c)
-			response := utils.NewByteBuf([]byte{})
-			response.WriteShort(2725)
-
-			response.WriteInt(currentHabbo.GetId())
-			response.WriteString(currentHabbo.GetUsername())
-			response.WriteString(currentHabbo.GetLook())
-			response.WriteString(currentHabbo.GetGender())
-			response.WriteString(currentHabbo.GetMotto())
-			response.WriteString(currentHabbo.GetUsername())
-			response.WriteBool(false)
-			response.WriteInt(0)
-			response.WriteInt(0)
-			response.WriteInt(0)
-			response.WriteBool(false)
-			response.WriteString("01-01-1970 00:00:00")
-			response.WriteBool(false)
-			response.WriteBool(false)
-
-			c.WriteMessage(websocket.BinaryMessage, response.Wrap())
-
+		handler, ok := packetHandlers[header]
+		if ok {
+			handler.Handle(gameManager, packet, c)
+		} else {
+			logger.Error("Unhandled packet header: %d", header)
 		}
 
 	}

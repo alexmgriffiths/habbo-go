@@ -1,6 +1,8 @@
 package managers
 
 import (
+	"database/sql"
+
 	"github.com/alexmgriffiths/habbo-go/game"
 	"github.com/alexmgriffiths/habbo-go/network"
 	"github.com/gorilla/websocket"
@@ -8,12 +10,18 @@ import (
 
 type GameManager struct {
 	clients []*network.GameClient
+	db      *sql.DB
 }
 
-func NewGameManager() *GameManager {
+func NewGameManager(db *sql.DB) *GameManager {
 	return &GameManager{
 		clients: make([]*network.GameClient, 0),
+		db:      db,
 	}
+}
+
+func (gm *GameManager) GetDatabase() *sql.DB {
+	return gm.db
 }
 
 func (gm *GameManager) GetClients() []*network.GameClient {
