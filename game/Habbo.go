@@ -82,8 +82,6 @@ func NewHabbo(db *sql.DB, conn *websocket.Conn, authTicket string) (*Habbo, erro
 		return nil, err
 	}
 
-	println(id, username)
-
 	return &Habbo{
 		connection: conn,
 		id:         id,
