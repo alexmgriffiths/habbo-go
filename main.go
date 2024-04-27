@@ -27,6 +27,13 @@ type PacketHandler interface {
 	Handle(gm *managers.GameManager, incomingPacket *incoming.IncomingPacket, c *websocket.Conn) error
 }
 
+// Ampersand because each of the handlers take a pointer for the PacketHandler:
+/*
+	func (e *ClientHelloEvent) Handle(...
+
+	The key part to notice is the context of (e *ClientHelloEvent) that's why we need pointers
+	We are using a pointer since we don't need a copy of the events, we can just reuse the exact same one over and over
+*/
 var packetHandlers = map[uint16]PacketHandler{
 	4000: &handshake.ClientHelloEvent{},
 	2419: &handshake.SSOTicketEvent{},
