@@ -24,8 +24,12 @@ func (gm *GameManager) GetDatabase() *sql.DB {
 	return gm.db
 }
 
-func (gm *GameManager) GetClients() []*network.GameClient {
-	return gm.clients
+func (gm *GameManager) GetClients() []*game.Habbo {
+	var clients []*game.Habbo
+	for _, client := range gm.clients {
+		clients = append(clients, client.GetHabbo())
+	}
+	return clients
 }
 
 func (gm *GameManager) GetClient(connection *websocket.Conn) *game.Habbo {

@@ -9,9 +9,9 @@ import (
 
 type GetUserInfoEvent struct{}
 
-func (e *GetUserInfoEvent) Handle(gm *managers.GameManager, packet *incoming.IncomingPacket, client *websocket.Conn) error {
+func (e *GetUserInfoEvent) Handle(managers *managers.Managers, packet *incoming.IncomingPacket, client *websocket.Conn) error {
 
-	currentHabbo := gm.GetClient(client)
+	currentHabbo := managers.GetGameManager().GetClient(client)
 	responsePacket := users.UserObjectComposer(currentHabbo)
 
 	client.WriteMessage(websocket.BinaryMessage, responsePacket)

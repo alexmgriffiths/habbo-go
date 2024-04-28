@@ -4,18 +4,21 @@ import (
 	"database/sql"
 	"strings"
 
+	"github.com/alexmgriffiths/habbo-go/game/rooms"
 	"github.com/gorilla/websocket"
 )
 
 type Habbo struct {
-	connection *websocket.Conn
-	id         int32
-	username   string
-	authTicket string
-	look       string
-	credits    int32
-	motto      string
-	gender     string
+	connection  *websocket.Conn
+	id          int32
+	username    string
+	authTicket  string
+	look        string
+	credits     int32
+	motto       string
+	gender      string
+	roomUnit    *rooms.RoomUnit
+	currentRoom *rooms.Room
 }
 
 func NewHabbo(db *sql.DB, conn *websocket.Conn, authTicket string) (*Habbo, error) {
@@ -83,14 +86,16 @@ func NewHabbo(db *sql.DB, conn *websocket.Conn, authTicket string) (*Habbo, erro
 	}
 
 	return &Habbo{
-		connection: conn,
-		id:         id,
-		username:   username,
-		authTicket: authTicket,
-		gender:     gender,
-		look:       look,
-		credits:    credits,
-		motto:      motto,
+		connection:  conn,
+		id:          id,
+		username:    username,
+		authTicket:  authTicket,
+		gender:      gender,
+		look:        look,
+		credits:     credits,
+		motto:       motto,
+		roomUnit:    rooms.NewRoomUnit(), // because this returns a pointer, if we do *rooms.NewRoomUnit we're actually dereferencing the pointer and pulling the value, fucking pointers...
+		currentRoom: nil,
 	}, nil
 }
 
@@ -116,4 +121,16 @@ func (h *Habbo) GetGender() string {
 
 func (h *Habbo) GetMotto() string {
 	return h.motto
+}
+
+func (h *Habbo) GetRoomUnit() *rooms.RoomUnit {
+	return h.roomUnit
+}
+
+func (h *Habbo) GetCurrentRoom() *rooms.Room {
+	return h.currentRoom
+}
+
+func (h *Habbo) SetCurrentRoom(room *rooms.Room) {
+	h.currentRoom = room
 }
