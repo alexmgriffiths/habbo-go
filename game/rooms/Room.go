@@ -107,34 +107,6 @@ func (r *Room) GetWallHeight() int32 {
 	return int32(r.WallHeight)
 }
 
-// func (r *Room) LoadLayout(db *sql.DB) {
-// 	var (
-// 		id          int
-// 		name        string
-// 		doorX       int
-// 		doorY       int
-// 		doorDir     int
-// 		heightmap   string
-// 		publicItems sql.NullString
-// 		clubOnly    int = 0
-// 	)
-
-// 	if r.OverrideModel != "" {
-// 		queryRow := db.QueryRow("SELECT * ROM room_models_custom WHERE id = ? LIMIT 1", r.ID)
-// 		queryRow.Scan(&id, &name, &doorX, &doorY, &doorDir, &heightmap)
-
-// 	} else {
-// 		queryRow := db.QueryRow("SELECT * FROM room_models WHERE name = ? LIMIT 1", r.Model)
-// 		queryRow.Scan(&name, &doorX, &doorY, &doorDir, &heightmap, &publicItems, &clubOnly)
-// 	}
-
-// 	layout := NewRoomLayout(name, doorX, doorY, doorDir, heightmap)
-// 	layout.Parse()
-
-// 	r.layout = layout
-
-// }
-
 func (r *Room) GetId() int32 {
 	return int32(r.ID)
 }
@@ -178,4 +150,53 @@ func (r *Room) GetTags() []string {
 
 func (r *Room) GetLayout() *RoomLayout {
 	return r.layout
+}
+
+// TODO: Implement
+func (r *Room) GetHideWall() bool {
+	return false
+}
+
+func (r *Room) GetWallSize() int32 {
+	return int32(r.ThicknessWall)
+}
+
+func (r *Room) GetFloorSize() int32 {
+	return int32(r.ThicknessFloor)
+}
+
+func (r *Room) GetStaffPicked() bool {
+	return r.IsStaffPicked == "1"
+}
+
+func (r *Room) GetMuteOption() int32 {
+	return int32(r.WhoCanMute)
+}
+
+func (r *Room) GetKickOption() int32 {
+	return int32(r.WhoCanKick)
+}
+
+func (r *Room) GetBanOption() int32 {
+	return int32(r.WhoCanBan)
+}
+
+func (r *Room) GetChatMode() int32 {
+	return int32(r.ChatMode)
+}
+
+func (r *Room) GetChatWeight() int32 {
+	return int32(r.ChatWeight)
+}
+
+func (r *Room) GetChatSpeed() int32 {
+	return int32(r.ChatSpeed)
+}
+
+func (r *Room) GetChatDistance() int32 {
+	return int32(r.ChatHearingDistance)
+}
+
+func (r *Room) GetChatProtection() int32 {
+	return int32(r.ChatProtection)
 }

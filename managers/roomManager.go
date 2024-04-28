@@ -287,11 +287,13 @@ func (rm *RoomManager) EnterRoom(gm *GameManager, habbo *game.Habbo, room *rooms
 
 	// if habbo.GetRoomUnit() != nil {
 	// 	rm.logger.Error("Users room unit is not null! Already in a room!!!!")
+	//	Send userRemoveMessageComposer to room
 	// 	return
 	// }
 
+	// This might be redunant since we check for this in other places
+	// Look into why this has to run every time but doesn't in the node version
 	//if habbo.GetRoomUnit().GetCurrentLocation() == nil {
-	rm.logger.Warn("Habbos room unit is null... Setting...")
 	doorTile := room.GetLayout().GetTile(room.GetLayout().GetDoorX(), room.GetLayout().GetDoorY())
 	habbo.GetRoomUnit().SetCurrentLocation(doorTile)
 	habbo.GetRoomUnit().GetCurrentLocation().SetZ(doorTile.GetStackHeight())
@@ -300,15 +302,17 @@ func (rm *RoomManager) EnterRoom(gm *GameManager, habbo *game.Habbo, room *rooms
 	//}
 
 	// push to array containing room habbos
-	for _, gameHabbo := range gm.GetClients() {
-		var usersInRoom []*game.Habbo
-		if gameHabbo.GetCurrentRoom().GetId() == room.GetId() {
-			usersInRoom = append(usersInRoom, gameHabbo)
-		}
-		for _, userInRoom := range usersInRoom {
-			userInRoom.GetConnection().WriteMessage(websocket.BinaryMessage, outgoingRooms.RoomUserComposer(usersInRoom))
-			userInRoom.GetConnection().WriteMessage(websocket.BinaryMessage, users.UserUpdateComposer(usersInRoom))
+	roomHabbos := gm.GetRoomHabbos(room.GetId())
+	roomUserCount := len(roomHabbos)
+	if roomUserCount > 0 {
+		for _, gameHabbo := range roomHabbos {
+			gameHabbo.GetConnection().WriteMessage(websocket.BinaryMessage, outgoingRooms.RoomUserComposer(roomHabbos))
+			gameHabbo.GetConnection().WriteMessage(websocket.BinaryMessage, users.UserUpdateComposer(roomHabbos))
 		}
 	}
+
+	habbo.GetConnection().WriteMessage(websocket.BinaryMessage, outgoingRooms.RoomEntryInfoComposer(room))
+	habbo.GetConnection().WriteMessage(websocket.BinaryMessage, outgoingRooms.RoomVisualizationSettingsComposer(room))
+	habbo.GetConnection().WriteMessage(websocket.BinaryMessage, outgoingRooms.GetGuestRoomResultComposer(room, roomUserCount, false, true))
 
 }
