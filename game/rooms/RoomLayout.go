@@ -194,3 +194,216 @@ func (l *RoomLayout) GetMapSizeY() int {
 func (l *RoomLayout) GetRelativeHeightmap() string {
 	return strings.ReplaceAll(l.heightmap, "\r\n", "\r")
 }
+
+func (l *RoomLayout) FindPath(oldTile *RoomTile, target *RoomTile, unit *RoomUnit) []*RoomTile {
+	openTiles := []*RoomTile{oldTile}
+	closedTiles := []*RoomTile{}
+
+	for len(openTiles) > 0 {
+		current := l.LowestFInOpen(openTiles)
+		if current == nil {
+			return []*RoomTile{}
+		}
+
+		if current.GetX() == target.GetX() && current.GetY() == target.GetY() {
+			return l.CalcPath(l.FindTile(openTiles, oldTile.GetX(), oldTile.GetY()), current)
+		}
+
+		closedTiles = append(closedTiles, current)
+		var filteredOpenTiles []*RoomTile
+		for _, tile := range openTiles {
+			if tile != current {
+				filteredOpenTiles = append(filteredOpenTiles, tile)
+			}
+		}
+		openTiles = filteredOpenTiles
+
+		adjacentTiles := l.GetAdjacent(openTiles, current, unit)
+		if len(adjacentTiles) <= 0 {
+			return []*RoomTile{}
+		}
+
+		for _, aT := range adjacentTiles {
+			if l.ContainsTile(closedTiles, aT) {
+				continue
+			}
+
+			if aT.GetState() == 1 {
+				closedTiles = append(closedTiles, aT)
+				continue
+			}
+
+			if !l.ContainsTile(openTiles, aT) {
+				aT.SetPrevious(current)
+				aT.SetHCosts(l.FindTile(openTiles, target.GetX(), target.GetY()))
+				aT.SetGCostsByTile(current)
+				openTiles = append(openTiles, aT)
+			} else if aT.GetGCosts() > aT.CalculateGCosts(current) {
+				aT.SetPrevious(current)
+				aT.SetGCostsByTile(current)
+			}
+
+		}
+
+	}
+	return []*RoomTile{}
+}
+
+func (l *RoomLayout) GetAdjacent(openTiles []*RoomTile, current *RoomTile, unit *RoomUnit) []*RoomTile {
+	x := current.GetX()
+	y := current.GetY()
+
+	adjacent := []*RoomTile{}
+	if x > 0 {
+		temp := l.FindTile(openTiles, x-1, y)
+		if temp != nil && l.CanWalkOn(temp) {
+			adjacent = append(adjacent, temp)
+		}
+	}
+
+	if x < l.GetMapSizeX() {
+		temp := l.FindTile(openTiles, x+1, y)
+		if temp != nil && !l.ContainsTile(adjacent, temp) && l.CanWalkOn(temp) {
+			adjacent = append(adjacent, temp)
+		}
+	}
+
+	if y > 0 {
+		temp := l.FindTile(openTiles, x, y-1)
+		if temp != nil && !l.ContainsTile(adjacent, temp) && l.CanWalkOn(temp) {
+			adjacent = append(adjacent, temp)
+		}
+	}
+
+	if y < l.GetMapSizeY() {
+		temp := l.FindTile(openTiles, x, y+1)
+		if temp != nil && !l.ContainsTile(adjacent, temp) && l.CanWalkOn(temp) {
+			adjacent = append(adjacent, temp)
+		}
+	}
+
+	if x < l.GetMapSizeX() && y < l.GetMapSizeY() {
+		offX := l.FindTile(openTiles, x+1, y)
+		offY := l.FindTile(openTiles, x, y+1)
+		if offX != nil && offY != nil {
+			temp := l.FindTile(openTiles, x+1, y+1)
+			if temp == nil {
+				return nil
+			}
+			temp.SetDiagonally(true)
+			if !l.ContainsTile(adjacent, temp) && l.CanWalkOn(temp) {
+				adjacent = append(adjacent, temp)
+			}
+		}
+	}
+
+	if x > 0 && y > 0 {
+		offX := l.FindTile(openTiles, x-1, y)
+		offY := l.FindTile(openTiles, x, y-1)
+		if offX != nil && offY != nil {
+			temp := l.FindTile(openTiles, x-1, y-1)
+			if temp == nil {
+				return nil
+			}
+			temp.SetDiagonally(true)
+			if !l.ContainsTile(adjacent, temp) && l.CanWalkOn(temp) {
+				adjacent = append(adjacent, temp)
+			}
+		}
+	}
+
+	if x > 0 && y < l.GetMapSizeY() {
+		offX := l.FindTile(openTiles, x-1, y)
+		offY := l.FindTile(openTiles, x, y+1)
+		if offX != nil && offY != nil {
+			temp := l.FindTile(openTiles, x-1, y+1)
+			if temp == nil {
+				return nil
+			}
+			temp.SetDiagonally(true)
+			if !l.ContainsTile(adjacent, temp) && l.CanWalkOn(temp) {
+				adjacent = append(adjacent, temp)
+			}
+		}
+	}
+
+	if x < l.GetMapSizeX() && y > 0 {
+		offX := l.FindTile(openTiles, x+1, y)
+		offY := l.FindTile(openTiles, x, y-1)
+		if offX != nil && offY != nil {
+			temp := l.FindTile(openTiles, x+1, y-1)
+			if temp == nil {
+				return nil
+			}
+			temp.SetDiagonally(true)
+			if !l.ContainsTile(adjacent, temp) && l.CanWalkOn(temp) {
+				adjacent = append(adjacent, temp)
+			}
+		}
+	}
+
+	return adjacent
+
+}
+
+func (l *RoomLayout) ContainsTile(tiles []*RoomTile, tile *RoomTile) bool {
+	for _, t := range tiles {
+		if t.GetX() == tile.GetX() && t.GetY() == tile.GetY() {
+			return true
+		}
+	}
+	return false
+}
+
+func (l *RoomLayout) CanWalkOn(tile *RoomTile) bool {
+	if tile == nil {
+		return false
+	}
+
+	return tile.GetState() != 1 && tile.GetState() != 2
+}
+
+func (l *RoomLayout) CalcPath(start *RoomTile, goal *RoomTile) []*RoomTile {
+	path := []*RoomTile{}
+	if start == nil {
+		return path
+	}
+
+	current := goal
+	for current != nil {
+		path = append(path, l.GetTile(current.GetX(), current.GetY()))
+		current = current.GetPrevious()
+		if current != nil && current == start {
+			return path
+		}
+	}
+	return path
+}
+
+func (l *RoomLayout) FindTile(tiles []*RoomTile, x int, y int) *RoomTile {
+	for _, tile := range tiles {
+		if x == tile.GetX() && y == tile.GetY() {
+			return tile
+		}
+	}
+	tile := l.GetTile(x, y)
+	if tile != nil {
+		return tile
+	}
+	return nil
+}
+
+func (l *RoomLayout) LowestFInOpen(tiles []*RoomTile) *RoomTile {
+	if tiles == nil {
+		return nil
+	}
+
+	cheapest := tiles[0]
+	for _, tile := range tiles {
+		if tile.GetFCosts() < cheapest.GetFCosts() {
+			cheapest = tile
+		}
+	}
+	return cheapest
+
+}

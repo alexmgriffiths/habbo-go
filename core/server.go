@@ -7,11 +7,13 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/alexmgriffiths/habbo-go/communication/incoming"
 	"github.com/alexmgriffiths/habbo-go/communication/incoming/handshake"
 	"github.com/alexmgriffiths/habbo-go/communication/incoming/navigator"
 	"github.com/alexmgriffiths/habbo-go/communication/incoming/rooms"
+	incomingRoomUser "github.com/alexmgriffiths/habbo-go/communication/incoming/rooms/users"
 	"github.com/alexmgriffiths/habbo-go/managers"
 	"github.com/alexmgriffiths/habbo-go/utils"
 	"github.com/gorilla/websocket"
@@ -43,7 +45,9 @@ var packetHandlers = map[uint16]PacketHandler{
 	2110: &navigator.NavigatorInitEvent{},
 	249:  &navigator.NavigatorSearchEvent{},
 	2312: &rooms.OpenFlatConnection{},
-	3898: &rooms.GetRoomDataEvent{},
+	3898: &rooms.GetRoomDataEvent{}, // Called when entering room from hotel view
+	2300: &rooms.GetRoomDataEvent{}, // Called when moving from one room to another
+	3320: &incomingRoomUser.MoveAvatarEvent{},
 }
 
 func (wsh webSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -127,7 +131,14 @@ func Start() {
 	}()
 
 	waitGroup.Wait()
-	log.Print("Loaded ", len(managersHolder.GetRoomManager().GetLayouts()))
+
+	go func() {
+		for {
+			// Call StartCycles every 500 milliseconds
+			managersHolder.GetGameManager().StartCycles()
+			time.Sleep(500 * time.Millisecond)
+		}
+	}()
 
 	log.Print("Starting server...")
 
